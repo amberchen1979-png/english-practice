@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>英文練習本</title>
+<style>
+  :root{
+    --paper:#EEF0EA;
+    --paper-line:#C9CFC3;
+    --ink:#1E2A38;
+    --ink-soft:#5B6B72;
+    --accent:#2F5D62;
+    --accent-soft:#DCEAE7;
+    --stamp:#A63D2F;
+    --gold:#C79A3D;
+    --card:#FBFAF6;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang TC","Microsoft JhengHei",sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  #app{
+    width:100%;
+    max-width:480px;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    padding-bottom:76px;
+  }
+  header.top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:22px 20px 8px;
+  }
+  header.top .date{
+    font-family:ui-serif,Georgia,"Noto Serif TC",serif;
+    font-size:15px;
+    color:var(--ink-soft);
+  }
+  header.top h1{
+    font-family:ui-serif,Georgia,"Noto Serif TC",serif;
+    font-size:22px;
+    margin:2px 0 0;
+    font-weight:700;
+  }
+  .sync-tag{
+    font-size:11px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    text-decoration:underline dotted;
+    margin-top:2px;
+  }
+  .stamp{
+    width:56px;height:56px;border-radius:50%;
+    border:2px solid var(--stamp);
+    color:var(--stamp);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    transform:rotate(-9deg);
+    flex-shrink:0;
+    font-family:ui-serif,Georgia,"Noto Serif TC",serif;
+    line-height:1;
+  }
+  .stamp.done{background:var(--stamp);color:#fff;}
+  .stamp b{font-size:20px;}
+  .stamp span{font-size:9px;letter-spacing:.05em;margin-top:2px;}
+
+  .banner{
+    margin:6px 20px 4px;
+    padding:12px 14px;
+    border-radius:var(--radius);
+    background:var(--accent-soft);
+    color:var(--accent);
+    font-size:14px;
+  }
+  .banner.pending{background:#F3E7D9;color:var(--gold);}
+
+  main{flex:1;padding:14px 20px 10px;}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:18px;
+    box-shadow:0 1px 0 rgba(0,0,0,.04);
+    border:1px solid rgba(0,0,0,.05);
+    margin-bottom:16px;
+  }
+  .card h2{
+    font-family:ui-serif,Georgia,"Noto Serif TC",serif;
+    font-size:16px;
+    margin:0 0 12px;
+  }
+  input[type=text], textarea{
+    width:100%;
+    border:1px solid var(--paper-line);
+    border-radius:8px;
+    resize:vertical;
+    font-size:16px;
+    font-family:inherit;
+    color:var(--ink);
+    background:var(--card);
+    padding:10px 12px;
+    outline:none;
+  }
+  textarea{min-height:70px;}
+  input::placeholder, textarea::placeholder{color:#9aa3a0;}
+  label.field-label{font-size:12px;color:var(--ink-soft);display:block;margin:10px 0 4px;}
+  label.field-label:first-child{margin-top:0;}
+
+  button{font-family:inherit;cursor:pointer;border:none;}
+  .btn{
+    background:var(--accent);color:#fff;padding:12px 18px;border-radius:10px;
+    font-size:15px;font-weight:600;min-height:44px;
+  }
+  .btn:disabled{opacity:.5;}
+  .btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent);}
+  .btn.small{padding:8px 12px;font-size:13px;min-height:36px;border-radius:8px;}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .row.end{justify-content:flex-end;margin-top:12px;}
+
+  .sentence-block{margin-bottom:18px;}
+  .sentence-block:last-child{margin-bottom:0;}
+  .zh-line{font-family:ui-serif,Georgia,"Noto Serif TC",serif;font-size:17px;color:var(--ink-soft);}
+  .en-line{font-size:18px;line-height:1.8;}
+  .word-chip{display:inline;border-bottom:1.5px dotted var(--accent);padding:0 1px;cursor:pointer;}
+  .word-chip.undefined{border-bottom-color:#C9A96E;}
+  .word-chip:active{background:var(--accent-soft);}
+
+  .practice-row{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .icon-btn{
+    background:var(--accent-soft);color:var(--accent);border-radius:20px;padding:8px 14px;
+    font-size:14px;min-height:40px;display:inline-flex;align-items:center;gap:6px;
+  }
+  .icon-btn.rec.active{background:var(--stamp);color:#fff;}
+  .score-badge{font-size:13px;padding:6px 10px;border-radius:20px;background:#EDEFE9;color:var(--ink-soft);}
+  .score-badge.good{background:#DCEFE1;color:#2E6B47;}
+  .score-badge.mid{background:#F3E7D9;color:var(--gold);}
+  .score-badge.low{background:#F3DEDA;color:var(--stamp);}
+
+  .empty{text-align:center;color:var(--ink-soft);font-size:14px;padding:40px 10px;line-height:1.7;}
+
+  .vocab-item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:14px 0;border-bottom:1px dashed var(--paper-line);}
+  .vocab-item:last-child{border-bottom:none;}
+  .vocab-word{font-size:17px;font-weight:700;}
+  .vocab-def{font-size:13px;color:var(--ink-soft);margin-top:3px;}
+  .vocab-zh{font-size:14px;margin-top:4px;}
+  .vocab-actions{display:flex;gap:6px;flex-shrink:0;}
+  .iconsm{width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .iconsm.del{background:#F3DEDA;color:var(--stamp);}
+
+  nav.tabs{
+    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:480px;display:flex;background:var(--card);border-top:1px solid rgba(0,0,0,.06);
+  }
+  nav.tabs button{flex:1;background:none;padding:12px 0 14px;font-size:13px;color:var(--ink-soft);display:flex;flex-direction:column;align-items:center;gap:3px;}
+  nav.tabs button.active{color:var(--accent);font-weight:700;}
+  nav.tabs .dot{width:6px;height:6px;border-radius:50%;background:transparent;}
+  nav.tabs button.active .dot{background:var(--accent);}
+
+  .overlay{position:fixed;inset:0;background:rgba(30,42,56,.35);display:none;align-items:flex-end;justify-content:center;z-index:20;}
+  .overlay.show{display:flex;}
+  .sheet{background:var(--card);width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:22px 22px 28px;}
+  .sheet .w-title{font-size:22px;font-weight:700;margin-bottom:4px;}
+  .sheet .w-def{font-size:14px;color:var(--ink-soft);margin-bottom:10px;}
+  .sheet .w-zh{font-size:16px;margin-bottom:18px;}
+
+  .toast{
+    position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;
+    opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:30;max-width:80%;text-align:center;
+  }
+  .toast.show{opacity:1;}
+
+  #setupOverlay{
+    position:fixed;inset:0;background:var(--paper);z-index:50;
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  #setupOverlay .box{max-width:400px;width:100%;}
+  #setupOverlay h1{font-family:ui-serif,Georgia,"Noto Serif TC",serif;font-size:22px;margin-bottom:8px;}
+  #setupOverlay p{font-size:14px;color:var(--ink-soft);line-height:1.7;margin-bottom:16px;}
+
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+
+<div id="setupOverlay">
+  <div class="box card">
+    <h1>英文練習本</h1>
+    <p>第一次使用，請設定一組「同步碼」。在電腦、手機上都輸入同一組同步碼，兩邊的練習紀錄跟詞彙庫就會自動同步。<br><br>建議用不容易被猜到的字串（例如自己的英文名+生日），不用是真的密碼，但也不要太簡單。</p>
+    <input type="text" id="syncCodeInput" placeholder="輸入同步碼，例如 amber-0912">
+    <div class="row end">
+      <button class="btn" id="syncCodeConfirmBtn">開始使用</button>
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+
+  <header class="top">
+    <div>
+      <div class="date" id="todayLabel">—</div>
+      <h1>英文練習本</h1>
+      <div class="sync-tag" id="syncTag">同步碼：—（點此更改）</div>
+    </div>
+    <div class="stamp" id="stampBadge"><b id="streakNum">0</b><span>天連續</span></div>
+  </header>
+
+  <div id="bannerWrap"></div>
+
+  <main>
+    <section class="page active" id="page-today">
+      <div class="card">
+        <h2>新增一句練習</h2>
+        <label class="field-label">中文句子</label>
+        <input type="text" id="zhInput" placeholder="例如：今天是下雨天">
+        <label class="field-label">英文翻譯（自己輸入，或去跟 Claude 聊天問完再貼過來）</label>
+        <input type="text" id="enInput" placeholder="例如：Today is a rainy day">
+        <div class="row end">
+          <button class="btn" id="addSentenceBtn">加入今日練習</button>
+        </div>
+      </div>
+
+      <div id="resultsWrap"></div>
+    </section>
+
+    <section class="page" id="page-vocab">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <h2>我的詞彙庫</h2>
+          <button class="btn ghost small" id="addVocabBtn">＋ 新增單字</button>
+        </div>
+        <div id="vocabList"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button class="active" data-page="today"><span class="dot"></span>今日練習</button>
+    <button data-page="vocab"><span class="dot"></span>詞彙庫</button>
+  </nav>
+
+  <div class="overlay" id="overlay">
+    <div class="sheet" id="sheetContent"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- Firebase (Firestore) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+/* =========================================================
+   請把下面換成你自己 Firebase 專案的設定值
+   （Firebase 主控台 → 專案設定 → 一般 → 你的應用程式 → SDK 設定）
+   這些值不是密鑰，可以放在前端程式碼裡，安全是由 Firestore
+   安全規則(firestore.rules)來把關，不是靠隱藏這些值。
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyB6rk1wI518U87ZcUbAXdDMJbRMN78Zk38",
+  authDomain: "english-practice-767e7.firebaseapp.com",
+  projectId: "english-practice-767e7",
+  storageBucket: "english-practice-767e7.firebasestorage.app",
+  messagingSenderId: "465548195938",
+  appId: "1:465548195938:web:741fa754063fa3252db93b"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+</script>
+
+<script>
+(function(){
+  const state = { log: [], vocab: [], streak: {lastDate:null, count:0} };
+  let currentWord = null; // {sentenceIdx, wordIdx} 或 null（代表是vocab庫裡的字）
+  let syncCode = localStorage.getItem('sync-code') || '';
+  let docRef = null;
+  let saveTimer = null;
+  let suppressNextSnapshot = false;
+
+  // ---------- date helpers ----------
+  function todayStrFromDate(d){
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function todayStr(){ return todayStrFromDate(new Date()); }
+  function yesterdayStr(dateStr){
+    const [y,m,d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m-1, d);
+    dt.setDate(dt.getDate()-1);
+    return todayStrFromDate(dt);
+  }
+  function formatDisplayDate(){
+    const d = new Date();
+    const wk = ['日','一','二','三','四','五','六'][d.getDay()];
+    return `${d.getMonth()+1}月${d.getDate()}日 星期${wk}`;
+  }
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  }
+
+  // ---------- Firestore sync ----------
+  function connectSync(){
+    docRef = db.collection('englishPractice').doc(syncCode);
+    docRef.onSnapshot((snap)=>{
+      if(suppressNextSnapshot){ suppressNextSnapshot = false; return; }
+      const data = snap.data();
+      if(data){
+        state.log = data.log || [];
+        state.vocab = data.vocab || [];
+        state.streak = data.streak || {lastDate:null, count:0};
+      }
+      renderStreak();
+      renderBanner();
+      renderResults();
+      renderVocab();
+    }, (err)=>{
+      showToast('雲端同步發生問題：' + err.message);
+    });
+  }
+
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      suppressNextSnapshot = true; // 避免自己寫入又觸發一次不必要的重繪
+      docRef.set({ log: state.log, vocab: state.vocab, streak: state.streak })
+        .catch(err=> showToast('儲存失敗：' + err.message));
+    }, 500);
+  }
+
+  function todaysEntry(){ return state.log.find(e => e.date === todayStr()); }
+  function ensureTodaysEntry(){
+    let e = todaysEntry();
+    if(!e){ e = { date: todayStr(), sentences: [] }; state.log.unshift(e); }
+    return e;
+  }
+
+  function markPracticedIfNeeded(){
+    const today = todayStr();
+    if(state.streak.lastDate === today){ renderStreak(); return; }
+    const y = yesterdayStr(today);
+    state.streak.count = (state.streak.lastDate === y) ? state.streak.count + 1 : 1;
+    state.streak.lastDate = today;
+    scheduleSave();
+    renderStreak();
+    renderBanner();
+  }
+
+  // ---------- toast ----------
+  let toastTimer;
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+  }
+
+  // ---------- word helpers ----------
+  function wordsFromEnglish(en){
+    const seen = new Set();
+    const list = [];
+    en.split(/\s+/).forEach(tok=>{
+      const clean = tok.replace(/[^a-zA-Z']/g,'').toLowerCase();
+      if(!clean || seen.has(clean)) return;
+      seen.add(clean);
+      const existing = state.vocab.find(v=>v.en.toLowerCase()===clean);
+      list.push({ en: clean, zh: existing ? existing.zh : '', def: existing ? (existing.def||'') : '' });
+    });
+    return list;
+  }
+
+  // ---------- rendering ----------
+  function renderStreak(){
+    document.getElementById('todayLabel').textContent = formatDisplayDate();
+    document.getElementById('streakNum').textContent = state.streak.count || 0;
+    document.getElementById('stampBadge').classList.toggle('done', state.streak.lastDate === todayStr());
+    document.getElementById('syncTag').textContent = `同步碼：${syncCode}（點此更改）`;
+  }
+
+  function renderBanner(){
+    const wrap = document.getElementById('bannerWrap');
+    const doneToday = state.streak.lastDate === todayStr();
+    wrap.innerHTML = doneToday
+      ? `<div class="banner">✅ 今天已完成練習，連續 ${state.streak.count} 天，太棒了！</div>`
+      : `<div class="banner pending">📝 今天還沒開始練習，別讓連續紀錄中斷囉！</div>`;
+  }
+
+  function renderResults(){
+    const wrap = document.getElementById('resultsWrap');
+    const entry = todaysEntry();
+    if(!entry || entry.sentences.length===0){
+      wrap.innerHTML = `<div class="empty">今天還沒有句子，輸入第一句開始練習吧 📖</div>`;
+      return;
+    }
+    wrap.innerHTML = entry.sentences.map((s, sIdx) => {
+      const wordsHtml = s.en.split(/(\s+)/).map(tok=>{
+        if(/^\s+$/.test(tok) || tok==='') return tok;
+        const clean = tok.replace(/[^a-zA-Z']/g,'').toLowerCase();
+        const wIdx = s.words.findIndex(w=>w.en.toLowerCase()===clean);
+        if(wIdx===-1) return tok;
+        const defined = s.words[wIdx].zh;
+        return `<span class="word-chip ${defined?'':'undefined'}" data-sentence="${sIdx}" data-widx="${wIdx}">${tok}</span>`;
+      }).join('');
+      let scoreHtml = '';
+      if(s.lastScore !== undefined && s.lastScore !== null){
+        const cls = s.lastScore>=80?'good':(s.lastScore>=50?'mid':'low');
+        scoreHtml = `<span class="score-badge ${cls}">跟讀相似度 ${s.lastScore}%</span>`;
+      }
+      return `
+        <div class="card sentence-block">
+          <div class="row" style="justify-content:space-between;align-items:flex-start;border-bottom:1px dashed var(--paper-line);padding-bottom:8px;margin-bottom:10px;">
+            <div class="zh-line" style="flex:1;">${escapeHtml(s.zh)}</div>
+            <button class="iconsm del" data-del-sentence="${sIdx}" title="刪除這句">🗑</button>
+          </div>
+          <div class="en-line">${wordsHtml}</div>
+          <div class="practice-row">
+            <button class="icon-btn play" data-sentence="${sIdx}">🔊 示範發音</button>
+            <button class="icon-btn rec" data-sentence="${sIdx}">🎤 開始跟讀</button>
+            ${scoreHtml}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderVocab(){
+    const list = document.getElementById('vocabList');
+    if(state.vocab.length===0){
+      list.innerHTML = `<div class="empty">詞彙庫還是空的，點單字或用「新增單字」加入吧 ⭐</div>`;
+      return;
+    }
+    list.innerHTML = state.vocab.map((v,idx)=>`
+      <div class="vocab-item">
+        <div>
+          <div class="vocab-word">${escapeHtml(v.en)}</div>
+          <div class="vocab-def">${escapeHtml(v.def||'')}</div>
+          <div class="vocab-zh">${escapeHtml(v.zh)}</div>
+        </div>
+        <div class="vocab-actions">
+          <button class="iconsm speak" data-word="${escapeHtml(v.en)}">🔊</button>
+          <button class="iconsm del" data-idx="${idx}">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ---------- speech ----------
+  function speak(text){
+    try{
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US'; u.rate = 0.95;
+      window.speechSynthesis.speak(u);
+    }catch(e){ showToast('這台裝置不支援語音播放'); }
+  }
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognizer = null, recognizingIdx = null;
+  function normalizeWords(str){ return str.toLowerCase().replace(/[^a-z0-9'\s]/g,'').split(/\s+/).filter(Boolean); }
+  function scoreAgainst(target, spoken){
+    const t = normalizeWords(target), s = new Set(normalizeWords(spoken));
+    if(t.length===0) return 0;
+    let hit=0; t.forEach(w=>{ if(s.has(w)) hit++; });
+    return Math.round((hit/t.length)*100);
+  }
+  function startRecognition(idx, btn){
+    if(!SR){ showToast('此瀏覽器不支援語音辨識，改用示範發音跟讀練習吧'); return; }
+    if(recognizer && recognizingIdx===idx){ recognizer.stop(); return; }
+    try{
+      recognizer = new SR();
+      recognizer.lang = 'en-US'; recognizer.interimResults = false; recognizer.maxAlternatives = 1;
+      recognizingIdx = idx;
+      btn.classList.add('active'); btn.textContent = '🎤 聆聽中…';
+      recognizer.onresult = (ev)=>{
+        const said = ev.results[0][0].transcript;
+        const entry = todaysEntry();
+        const sentence = entry.sentences[idx];
+        sentence.lastScore = scoreAgainst(sentence.en, said);
+        scheduleSave();
+        markPracticedIfNeeded();
+        renderResults();
+        showToast(`你說的是：「${said}」`);
+      };
+      recognizer.onerror = ()=> showToast('沒有聽清楚，再試一次');
+      recognizer.onend = ()=>{ btn.classList.remove('active'); btn.textContent = '🎤 開始跟讀'; recognizingIdx=null; };
+      recognizer.start();
+    }catch(e){ showToast('語音辨識啟動失敗'); }
+  }
+
+  // ---------- word / vocab sheet ----------
+  function openWordSheet(sentenceIdx, wordIdx){
+    const entry = todaysEntry();
+    const w = entry.sentences[sentenceIdx].words[wordIdx];
+    currentWord = { sentenceIdx, wordIdx };
+    const sheet = document.getElementById('sheetContent');
+    sheet.innerHTML = `
+      <div class="w-title">${escapeHtml(w.en)}</div>
+      <label class="field-label">中文意思</label>
+      <input type="text" id="wordZh" value="${escapeHtml(w.zh||'')}" placeholder="輸入中文意思">
+      <label class="field-label">英文簡短解釋（選填）</label>
+      <input type="text" id="wordDef" value="${escapeHtml(w.def||'')}" placeholder="像字典一樣的簡短解釋">
+      <div class="row" style="margin-top:14px;">
+        <button class="btn ghost small" id="sheetSpeak">🔊 發音</button>
+        <button class="btn small" id="sheetSaveWord">儲存並加入詞彙庫</button>
+      </div>
+    `;
+    document.getElementById('overlay').classList.add('show');
+  }
+  function closeSheet(){ document.getElementById('overlay').classList.remove('show'); currentWord = null; }
+
+  function addOrUpdateVocab(en, zh, def){
+    const idx = state.vocab.findIndex(v=>v.en.toLowerCase()===en.toLowerCase());
+    if(idx===-1){
+      state.vocab.unshift({ en, zh, def: def||'', addedAt: todayStr() });
+    }else{
+      state.vocab[idx].zh = zh;
+      state.vocab[idx].def = def || state.vocab[idx].def;
+    }
+    scheduleSave();
+    renderVocab();
+  }
+
+  // ---------- events: sync code setup ----------
+  function initApp(){
+    document.getElementById('setupOverlay').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    connectSync();
+  }
+  if(syncCode){
+    initApp();
+  }
+  document.getElementById('syncCodeConfirmBtn').addEventListener('click', ()=>{
+    const val = document.getElementById('syncCodeInput').value.trim();
+    if(!val){ showToast('請輸入同步碼'); return; }
+    syncCode = val;
+    localStorage.setItem('sync-code', syncCode);
+    initApp();
+  });
+  document.getElementById('syncTag').addEventListener('click', ()=>{
+    const val = prompt('輸入同步碼（跟另一台裝置要用同一組才會同步）：', syncCode);
+    if(val && val.trim()){
+      syncCode = val.trim();
+      localStorage.setItem('sync-code', syncCode);
+      location.reload();
+    }
+  });
+
+  // ---------- events: add sentence ----------
+  document.getElementById('addSentenceBtn').addEventListener('click', ()=>{
+    const zh = document.getElementById('zhInput').value.trim();
+    const en = document.getElementById('enInput').value.trim();
+    if(!zh || !en){ showToast('中文跟英文都要填喔'); return; }
+    const entry = ensureTodaysEntry();
+    entry.sentences.push({ zh, en, words: wordsFromEnglish(en), lastScore: null });
+    scheduleSave();
+    document.getElementById('zhInput').value = '';
+    document.getElementById('enInput').value = '';
+    renderResults();
+    showToast('已加入！點單字可標記意思');
+  });
+
+  // ---------- events: results area ----------
+  document.getElementById('resultsWrap').addEventListener('click', (e)=>{
+    const delBtn = e.target.closest('[data-del-sentence]');
+    if(delBtn){
+      const entry = todaysEntry();
+      entry.sentences.splice(Number(delBtn.dataset.delSentence), 1);
+      scheduleSave();
+      renderResults();
+      return;
+    }
+    const chip = e.target.closest('.word-chip');
+    if(chip){ openWordSheet(Number(chip.dataset.sentence), Number(chip.dataset.widx)); return; }
+    const playBtn = e.target.closest('.play');
+    if(playBtn){ speak(todaysEntry().sentences[Number(playBtn.dataset.sentence)].en); return; }
+    const recBtn = e.target.closest('.rec');
+    if(recBtn){ startRecognition(Number(recBtn.dataset.sentence), recBtn); return; }
+  });
+
+  // ---------- events: vocab tab ----------
+  document.getElementById('vocabList').addEventListener('click', (e)=>{
+    const speakBtn = e.target.closest('.speak');
+    if(speakBtn){ speak(speakBtn.dataset.word); return; }
+    const delBtn = e.target.closest('.del');
+    if(delBtn){
+      state.vocab.splice(Number(delBtn.dataset.idx),1);
+      scheduleSave();
+      renderVocab();
+      return;
+    }
+  });
+
+  document.getElementById('addVocabBtn').addEventListener('click', ()=>{
+    currentWord = null;
+    const sheet = document.getElementById('sheetContent');
+    sheet.innerHTML = `
+      <div class="w-title" style="margin-bottom:14px;">新增單字</div>
+      <label class="field-label">英文單字</label>
+      <input type="text" id="wordZh_en" placeholder="英文單字">
+      <label class="field-label">中文意思</label>
+      <input type="text" id="wordZh" placeholder="中文意思">
+      <label class="field-label">英文簡短解釋（選填）</label>
+      <input type="text" id="wordDef" placeholder="像字典一樣的簡短解釋">
+      <div class="row" style="margin-top:14px;">
+        <button class="btn" id="sheetSaveNewVocab">儲存</button>
+      </div>
+    `;
+    document.getElementById('overlay').classList.add('show');
+  });
+
+  // ---------- overlay events ----------
+  document.getElementById('overlay').addEventListener('click', (e)=>{
+    if(e.target.id==='overlay') closeSheet();
+
+    if(e.target.id==='sheetSpeak' && currentWord){
+      const entry = todaysEntry();
+      speak(entry.sentences[currentWord.sentenceIdx].words[currentWord.wordIdx].en);
+    }
+    if(e.target.id==='sheetSaveWord' && currentWord){
+      const zh = document.getElementById('wordZh').value.trim();
+      const def = document.getElementById('wordDef').value.trim();
+      if(!zh){ showToast('請輸入中文意思'); return; }
+      const entry = todaysEntry();
+      const w = entry.sentences[currentWord.sentenceIdx].words[currentWord.wordIdx];
+      w.zh = zh; w.def = def;
+      scheduleSave();
+      addOrUpdateVocab(w.en, zh, def);
+      renderResults();
+      closeSheet();
+      showToast('已儲存並加入詞彙庫 ⭐');
+    }
+    if(e.target.id==='sheetSaveNewVocab'){
+      const en = document.getElementById('wordZh_en').value.trim();
+      const zh = document.getElementById('wordZh').value.trim();
+      const def = document.getElementById('wordDef').value.trim();
+      if(!en || !zh){ showToast('請至少填英文單字跟中文意思'); return; }
+      addOrUpdateVocab(en, zh, def);
+      closeSheet();
+      showToast('已加入詞彙庫 ⭐');
+    }
+  });
+
+  // ---------- tabs ----------
+  document.querySelectorAll('nav.tabs button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.getElementById('page-'+btn.dataset.page).classList.add('active');
+      if(btn.dataset.page==='vocab') renderVocab();
+    });
+  });
+})();
+</script>
+</body>
+</html>
