@@ -5,7 +5,7 @@
 // 回傳格式：      { "en": "Today is a rainy day.", "words": [{ "en": "rainy", "zh": "多雨的" }, ...] }
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = "openai/gpt-oss-20b";
 
 exports.handler = async (event) => {
   const headers = {
