@@ -23,7 +23,7 @@ exports.handler = async (event) => {
     return { statusCode: 405, headers, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = (process.env.GROQ_API_KEY || "").trim();
   if (!apiKey) {
     return {
       statusCode: 500,
@@ -72,10 +72,14 @@ exports.handler = async (event) => {
 
     if (!resp.ok) {
       const errText = await resp.text();
+      console.error("Groq API error", resp.status, errText);
       return {
         statusCode: 502,
         headers,
-        body: JSON.stringify({ error: `翻譯服務發生問題 (${resp.status})`, detail: errText }),
+        body: JSON.stringify({
+          error: `翻譯服務發生問題 (${resp.status})：${errText.slice(0, 300)}`,
+          detail: errText,
+        }),
       };
     }
 
