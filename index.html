@@ -288,7 +288,7 @@ const db = firebase.firestore();
       list.push({
         en: clean,
         zh: existing ? existing.zh : (pre ? pre.zh : ''),
-        def: existing ? (existing.def||'') : ''
+        def: existing ? (existing.def||'') : (pre ? (pre.def||'') : '')
       });
     });
     return list;
@@ -525,7 +525,7 @@ const db = firebase.firestore();
       if(!resp.ok){ throw new Error(data.error || '翻譯失敗'); }
       document.getElementById('enInput').value = data.en;
       lastTranslateWords = {};
-      (data.words||[]).forEach(w=>{ lastTranslateWords[w.en.toLowerCase()] = { zh: w.zh }; });
+      (data.words||[]).forEach(w=>{ lastTranslateWords[w.en.toLowerCase()] = { zh: w.zh, def: w.def || '' }; });
       showToast('翻譯完成，可再自行調整');
     }catch(e){
       showToast('AI 翻譯失敗：' + e.message + '（可自行輸入英文）');
