@@ -106,6 +106,12 @@
       <div id="reviewWrap"></div>
     </section>
 
+    <!-- 歷史紀錄 -->
+    <section class="page hidden" id="page-history">
+      <h2 class="font-bold text-slate-900 mb-3">練習過的句子</h2>
+      <div id="historyWrap"></div>
+    </section>
+
     <!-- 詞彙庫 -->
     <section class="page hidden" id="page-vocab">
       <div class="bg-white rounded-2xl shadow-sm shadow-slate-200/60 border border-slate-100 p-5">
@@ -126,6 +132,9 @@
     <button class="tab-btn flex-1 flex flex-col items-center gap-1 py-3 text-[11px] font-medium text-slate-400 relative" data-page="review">
       <span class="text-lg leading-none">🔁</span><span>複習</span><span class="tab-dot w-1 h-1 rounded-full bg-indigo-600 opacity-0"></span>
       <span id="reviewBadge" class="hidden absolute top-1.5 right-[28%] w-2 h-2 rounded-full bg-rose-500"></span>
+    </button>
+    <button class="tab-btn flex-1 flex flex-col items-center gap-1 py-3 text-[11px] font-medium text-slate-400" data-page="history">
+      <span class="text-lg leading-none">📚</span><span>歷史</span><span class="tab-dot w-1 h-1 rounded-full bg-indigo-600 opacity-0"></span>
     </button>
     <button class="tab-btn flex-1 flex flex-col items-center gap-1 py-3 text-[11px] font-medium text-slate-400" data-page="vocab">
       <span class="text-lg leading-none">⭐</span><span>詞彙庫</span><span class="tab-dot w-1 h-1 rounded-full bg-indigo-600 opacity-0"></span>
@@ -165,6 +174,30 @@ const db = firebase.firestore();
   let saveTimer = null;
   let suppressNextSnapshot = false;
   const REVIEW_INTERVALS = [1, 2, 4, 7, 14, 30]; // 天，依 level 0~5
+  const SUGGESTED_SENTENCES = [
+    "我正在等薪資表，才能進行下一個步驟",
+    "這份報告可以請你先看過一遍嗎",
+    "我今天必須準時下班，有事先跟你說",
+    "會議可以先改到下午三點嗎",
+    "麻煩幫我把這個檔案寄給客戶",
+    "我覺得這個方案還需要再討論一下",
+    "今天的午餐我想吃點清淡的",
+    "週末我打算在家整理房間",
+    "這個問題我需要再確認一下才能回覆你",
+    "謝謝你這麼快就處理好了",
+    "如果你有空，可以幫我看一下這個嗎",
+    "我明天早上會晚一點進公司",
+    "這個月的預算好像有點超過了",
+    "我想請教一下這個系統要怎麼操作",
+    "外面下雨了，記得帶傘",
+  ];
+  let currentSuggestion = '';
+  function pickNewSuggestion(){
+    if(SUGGESTED_SENTENCES.length <= 1){ currentSuggestion = SUGGESTED_SENTENCES[0] || ''; return; }
+    let next;
+    do { next = SUGGESTED_SENTENCES[Math.floor(Math.random()*SUGGESTED_SENTENCES.length)]; } while(next === currentSuggestion);
+    currentSuggestion = next;
+  }
 
   // ---------- date helpers ----------
   function todayStrFromDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -208,6 +241,13 @@ const db = firebase.firestore();
   }
 
   function todaysEntry(){ return state.log.find(e => e.date === todayStr()); }
+  function findEntry(date){ return state.log.find(e => e.date === date); }
+  function formatHistoryDate(dateStr){
+    const [y,m,d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m-1, d);
+    const wk = ['日','一','二','三','四','五','六'][dt.getDay()];
+    return `${m}月${d}日 星期${wk}`;
+  }
   function ensureTodaysEntry(){
     let e = todaysEntry();
     if(!e){ e = { date: todayStr(), sentences: [] }; state.log.unshift(e); }
@@ -255,7 +295,7 @@ const db = firebase.firestore();
   }
 
   // ---------- rendering ----------
-  function renderAll(){ renderStreak(); renderBanner(); renderResults(); renderVocab(); renderReview(); }
+  function renderAll(){ renderStreak(); renderBanner(); renderResults(); renderVocab(); renderReview(); renderHistory(); }
 
   function renderStreak(){
     document.getElementById('todayLabel').textContent = formatDisplayDate();
@@ -270,9 +310,50 @@ const db = firebase.firestore();
   function renderBanner(){
     const wrap = document.getElementById('bannerWrap');
     const doneToday = state.streak.lastDate === todayStr();
-    wrap.innerHTML = doneToday
-      ? `<div class="bg-emerald-50 text-emerald-700 text-sm rounded-2xl px-4 py-3 mb-1">✅ 今天已完成練習，連續 ${state.streak.count} 天，太棒了！</div>`
-      : `<div class="bg-amber-50 text-amber-700 text-sm rounded-2xl px-4 py-3 mb-1">📝 今天還沒開始練習，別讓連續紀錄中斷囉！</div>`;
+    if(doneToday){
+      wrap.innerHTML = `<div class="bg-emerald-50 text-emerald-700 text-sm rounded-2xl px-4 py-3 mb-1">✅ 今天已完成練習，連續 ${state.streak.count} 天，太棒了！</div>`;
+      return;
+    }
+    if(!currentSuggestion) pickNewSuggestion();
+    wrap.innerHTML = `
+      <div class="bg-amber-50 rounded-2xl px-4 py-3.5 mb-1">
+        <div class="text-amber-700 text-sm mb-2.5">📝 今天還沒開始練習，別讓連續紀錄中斷囉！有空就練一句：</div>
+        <div class="text-slate-800 text-[15px] font-medium mb-3">「${escapeHtml(currentSuggestion)}」</div>
+        <div class="flex gap-2">
+          <button id="useSuggestionBtn" class="flex-1 bg-indigo-600 text-white text-xs font-semibold rounded-full px-4 py-2.5">用這句開始 →</button>
+          <button id="shuffleSuggestionBtn" class="text-xs font-semibold text-amber-700 bg-white border border-amber-200 rounded-full px-3.5 py-2.5">🔀 換一句</button>
+        </div>
+      </div>`;
+  }
+
+  function renderSentenceCard(entry, sIdx){
+    const s = entry.sentences[sIdx];
+    const wordsHtml = s.en.split(/(\s+)/).map(tok=>{
+      if(/^\s+$/.test(tok) || tok==='') return tok;
+      const clean = tok.replace(/[^a-zA-Z']/g,'').toLowerCase();
+      const wIdx = s.words.findIndex(w=>w.en.toLowerCase()===clean);
+      if(wIdx===-1) return escapeHtml(tok);
+      const defined = s.words[wIdx].zh;
+      return `<span class="word-chip ${defined?'':'undefined'}" data-date="${entry.date}" data-sentence="${sIdx}" data-widx="${wIdx}">${escapeHtml(tok)}</span>`;
+    }).join('');
+    let scoreHtml = '';
+    if(s.lastScore !== undefined && s.lastScore !== null){
+      const cls = s.lastScore>=80?'bg-emerald-50 text-emerald-700':(s.lastScore>=50?'bg-amber-50 text-amber-700':'bg-rose-50 text-rose-700');
+      scoreHtml = `<span class="text-xs font-semibold rounded-full px-3 py-1.5 ${cls}">跟讀相似度 ${s.lastScore}%</span>`;
+    }
+    return `
+      <div class="bg-white rounded-2xl shadow-sm shadow-slate-200/60 border border-slate-100 p-5 mb-3.5">
+        <div class="flex justify-between items-start gap-2 border-b border-dashed border-slate-200 pb-3 mb-3">
+          <div class="text-slate-500 text-[15px] flex-1">${escapeHtml(s.zh)}</div>
+          <button class="text-rose-400 text-sm px-1" data-date="${entry.date}" data-del-sentence="${sIdx}" title="刪除這句">🗑</button>
+        </div>
+        <div class="text-lg leading-relaxed text-slate-900">${wordsHtml}</div>
+        <div class="flex items-center gap-2 flex-wrap mt-3.5">
+          <button class="play flex items-center gap-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-full px-3.5 py-2" data-date="${entry.date}" data-sentence="${sIdx}">🔊 示範發音</button>
+          <button class="rec flex items-center gap-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-full px-3.5 py-2" data-date="${entry.date}" data-sentence="${sIdx}">🎤 開始跟讀</button>
+          ${scoreHtml}
+        </div>
+      </div>`;
   }
 
   function renderResults(){
@@ -282,32 +363,28 @@ const db = firebase.firestore();
       wrap.innerHTML = `<div class="text-center text-slate-400 text-sm py-10 leading-relaxed">今天還沒有句子，輸入第一句開始練習吧 📖</div>`;
       return;
     }
-    wrap.innerHTML = entry.sentences.map((s, sIdx) => {
-      const wordsHtml = s.en.split(/(\s+)/).map(tok=>{
-        if(/^\s+$/.test(tok) || tok==='') return tok;
-        const clean = tok.replace(/[^a-zA-Z']/g,'').toLowerCase();
-        const wIdx = s.words.findIndex(w=>w.en.toLowerCase()===clean);
-        if(wIdx===-1) return escapeHtml(tok);
-        const defined = s.words[wIdx].zh;
-        return `<span class="word-chip ${defined?'':'undefined'}" data-sentence="${sIdx}" data-widx="${wIdx}">${escapeHtml(tok)}</span>`;
-      }).join('');
-      let scoreHtml = '';
-      if(s.lastScore !== undefined && s.lastScore !== null){
-        const cls = s.lastScore>=80?'bg-emerald-50 text-emerald-700':(s.lastScore>=50?'bg-amber-50 text-amber-700':'bg-rose-50 text-rose-700');
-        scoreHtml = `<span class="text-xs font-semibold rounded-full px-3 py-1.5 ${cls}">跟讀相似度 ${s.lastScore}%</span>`;
-      }
+    wrap.innerHTML = entry.sentences.map((s, sIdx) => renderSentenceCard(entry, sIdx)).join('');
+  }
+
+  function renderHistory(){
+    const wrap = document.getElementById('historyWrap');
+    if(!wrap) return;
+    const entries = state.log
+      .filter(e => e.date !== todayStr() && e.sentences && e.sentences.length > 0)
+      .sort((a,b) => a.date < b.date ? 1 : -1);
+    if(entries.length===0){
+      wrap.innerHTML = `<div class="text-center text-slate-400 text-sm py-10 leading-relaxed">還沒有歷史紀錄<br>今天練習的句子，明天就會出現在這裡 📚</div>`;
+      return;
+    }
+    wrap.innerHTML = entries.map(entry => {
+      const cards = entry.sentences.map((s, sIdx) => renderSentenceCard(entry, sIdx)).join('');
       return `
-        <div class="bg-white rounded-2xl shadow-sm shadow-slate-200/60 border border-slate-100 p-5 mb-3.5">
-          <div class="flex justify-between items-start gap-2 border-b border-dashed border-slate-200 pb-3 mb-3">
-            <div class="text-slate-500 text-[15px] flex-1">${escapeHtml(s.zh)}</div>
-            <button class="text-rose-400 text-sm px-1" data-del-sentence="${sIdx}" title="刪除這句">🗑</button>
-          </div>
-          <div class="text-lg leading-relaxed text-slate-900">${wordsHtml}</div>
-          <div class="flex items-center gap-2 flex-wrap mt-3.5">
-            <button class="play flex items-center gap-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-full px-3.5 py-2" data-sentence="${sIdx}">🔊 示範發音</button>
-            <button class="rec flex items-center gap-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-full px-3.5 py-2" data-sentence="${sIdx}">🎤 開始跟讀</button>
-            ${scoreHtml}
-          </div>
+        <div class="mb-4">
+          <button class="history-toggle w-full flex items-center justify-between text-left mb-2 py-1" data-date="${entry.date}">
+            <span class="text-sm font-bold text-slate-700">${formatHistoryDate(entry.date)}</span>
+            <span class="text-xs text-slate-400 flex items-center gap-1">${entry.sentences.length} 句 <span class="history-arrow">﹀</span></span>
+          </button>
+          <div class="history-group hidden" data-group="${entry.date}">${cards}</div>
         </div>`;
     }).join('');
   }
@@ -393,7 +470,7 @@ const db = firebase.firestore();
   }
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognizer = null, recognizingIdx = null;
+  let recognizer = null, recognizingKey = null;
   function normalizeWords(str){ return str.toLowerCase().replace(/[^a-z0-9'\s]/g,'').split(/\s+/).filter(Boolean); }
   function scoreAgainst(target, spoken){
     const t = normalizeWords(target), s = new Set(normalizeWords(spoken));
@@ -401,26 +478,28 @@ const db = firebase.firestore();
     let hit=0; t.forEach(w=>{ if(s.has(w)) hit++; });
     return Math.round((hit/t.length)*100);
   }
-  function startRecognition(idx, btn){
+  function startRecognition(date, idx, btn){
     if(!SR){ showToast('此瀏覽器不支援語音辨識，改用示範發音跟讀練習吧'); return; }
-    if(recognizer && recognizingIdx===idx){ recognizer.stop(); return; }
+    const key = date + '|' + idx;
+    if(recognizer && recognizingKey===key){ recognizer.stop(); return; }
     try{
       recognizer = new SR();
       recognizer.lang = 'en-US'; recognizer.interimResults = false; recognizer.maxAlternatives = 1;
-      recognizingIdx = idx;
+      recognizingKey = key;
       btn.classList.add('bg-rose-500','text-white'); btn.textContent = '🎤 聆聽中…';
       recognizer.onresult = (ev)=>{
         const said = ev.results[0][0].transcript;
-        const entry = todaysEntry();
+        const entry = findEntry(date);
         const sentence = entry.sentences[idx];
         sentence.lastScore = scoreAgainst(sentence.en, said);
         scheduleSave();
-        markPracticedIfNeeded();
+        if(date === todayStr()) markPracticedIfNeeded();
         renderResults();
+        renderHistory();
         showToast(`你說的是：「${said}」`);
       };
       recognizer.onerror = ()=> showToast('沒有聽清楚，再試一次');
-      recognizer.onend = ()=>{ btn.classList.remove('bg-rose-500','text-white'); btn.textContent = '🎤 開始跟讀'; recognizingIdx=null; };
+      recognizer.onend = ()=>{ btn.classList.remove('bg-rose-500','text-white'); btn.textContent = '🎤 開始跟讀'; recognizingKey=null; };
       recognizer.start();
     }catch(e){ showToast('語音辨識啟動失敗'); }
   }
@@ -458,10 +537,10 @@ const db = firebase.firestore();
   }
 
   // ---------- word / vocab sheet ----------
-  function openWordSheet(sentenceIdx, wordIdx){
-    const entry = todaysEntry();
+  function openWordSheet(date, sentenceIdx, wordIdx){
+    const entry = findEntry(date);
     const w = entry.sentences[sentenceIdx].words[wordIdx];
-    currentWord = { sentenceIdx, wordIdx };
+    currentWord = { date, sentenceIdx, wordIdx };
     const sheet = document.getElementById('sheetContent');
     sheet.innerHTML = `
       <div class="text-2xl font-extrabold text-slate-900 mb-1">${escapeHtml(w.en)}</div>
@@ -533,22 +612,53 @@ const db = firebase.firestore();
     showToast('已加入！點單字可標記意思');
   });
 
-  // ---------- events: results area ----------
-  document.getElementById('resultsWrap').addEventListener('click', (e)=>{
+  // ---------- events: results area (shared by 今日練習 + 歷史) ----------
+  function handleSentenceAreaClick(e){
     const delBtn = e.target.closest('[data-del-sentence]');
     if(delBtn){
-      const entry = todaysEntry();
+      const entry = findEntry(delBtn.dataset.date);
       entry.sentences.splice(Number(delBtn.dataset.delSentence), 1);
       scheduleSave();
       renderResults();
+      renderHistory();
       return;
     }
     const chip = e.target.closest('.word-chip');
-    if(chip){ openWordSheet(Number(chip.dataset.sentence), Number(chip.dataset.widx)); return; }
+    if(chip){ openWordSheet(chip.dataset.date, Number(chip.dataset.sentence), Number(chip.dataset.widx)); return; }
     const playBtn = e.target.closest('.play');
-    if(playBtn){ speak(todaysEntry().sentences[Number(playBtn.dataset.sentence)].en); return; }
+    if(playBtn){ const entry = findEntry(playBtn.dataset.date); speak(entry.sentences[Number(playBtn.dataset.sentence)].en); return; }
     const recBtn = e.target.closest('.rec');
-    if(recBtn){ startRecognition(Number(recBtn.dataset.sentence), recBtn); return; }
+    if(recBtn){ startRecognition(recBtn.dataset.date, Number(recBtn.dataset.sentence), recBtn); return; }
+    const historyToggle = e.target.closest('.history-toggle');
+    if(historyToggle){
+      const group = document.querySelector(`.history-group[data-group="${historyToggle.dataset.date}"]`);
+      if(group){
+        group.classList.toggle('hidden');
+        const arrow = historyToggle.querySelector('.history-arrow');
+        if(arrow) arrow.textContent = group.classList.contains('hidden') ? '﹀' : '︿';
+      }
+      return;
+    }
+  }
+  document.getElementById('resultsWrap').addEventListener('click', handleSentenceAreaClick);
+  document.getElementById('historyWrap').addEventListener('click', handleSentenceAreaClick);
+
+  // ---------- events: 今日練習提示（banner 建議句子）----------
+  document.getElementById('bannerWrap').addEventListener('click', (e)=>{
+    const useBtn = e.target.closest('#useSuggestionBtn');
+    if(useBtn){
+      document.querySelectorAll('nav .tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelector('nav .tab-btn[data-page="today"]').classList.add('active');
+      document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+      document.getElementById('page-today').classList.remove('hidden');
+      const zhInput = document.getElementById('zhInput');
+      zhInput.value = currentSuggestion;
+      zhInput.focus();
+      zhInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    const shuffleBtn = e.target.closest('#shuffleSuggestionBtn');
+    if(shuffleBtn){ pickNewSuggestion(); renderBanner(); return; }
   });
 
   // ---------- events: review tab ----------
@@ -603,19 +713,20 @@ const db = firebase.firestore();
   document.getElementById('overlay').addEventListener('click', (e)=>{
     if(e.target.id==='overlay') closeSheet();
     if(e.target.id==='sheetSpeak' && currentWord){
-      const entry = todaysEntry();
+      const entry = findEntry(currentWord.date);
       speak(entry.sentences[currentWord.sentenceIdx].words[currentWord.wordIdx].en);
     }
     if(e.target.id==='sheetSaveWord' && currentWord){
       const zh = document.getElementById('wordZh').value.trim();
       const def = document.getElementById('wordDef').value.trim();
       if(!zh){ showToast('請輸入中文意思'); return; }
-      const entry = todaysEntry();
+      const entry = findEntry(currentWord.date);
       const w = entry.sentences[currentWord.sentenceIdx].words[currentWord.wordIdx];
       w.zh = zh; w.def = def;
       scheduleSave();
       addOrUpdateVocab(w.en, zh, def);
       renderResults();
+      renderHistory();
       closeSheet();
       showToast('已儲存並加入詞彙庫 ⭐');
     }
@@ -639,6 +750,7 @@ const db = firebase.firestore();
       document.getElementById('page-'+btn.dataset.page).classList.remove('hidden');
       if(btn.dataset.page==='vocab') renderVocab();
       if(btn.dataset.page==='review') renderReview();
+      if(btn.dataset.page==='history') renderHistory();
     });
   });
 })();
