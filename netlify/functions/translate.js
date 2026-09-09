@@ -5,7 +5,7 @@
 // 回傳格式：      { "en": "Today is a rainy day.", "words": [{ "en": "rainy", "zh": "多雨的" }, ...] }
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "openai/gpt-oss-20b";
+const MODEL = "openai/gpt-oss-20b"; // 注意：llama-3.3-70b-versatile 對此帳號回傳 404 model_not_found，改用免費帳號可用的模型
 
 exports.handler = async (event) => {
   const headers = {
@@ -46,9 +46,11 @@ exports.handler = async (event) => {
 
   const systemPrompt = `你是專業的中翻英老師，服務對象是台灣的上班族，用來練習日常與職場英文口說。
 規則：
-1. 把使用者提供的中文句子翻成道地、口語、職場+生活化的英文，避免逐字直翻的生硬感。
-2. 從你翻出的英文句子中，挑出 3-8 個對學習者有幫助的單字或片語（排除 a, the, is, to 這類太基礎的字)。
-3. 只能輸出一個 JSON 物件，格式為：
+1. 翻譯要忠於原句的意思與語氣，用自然、道地的英文表達，但不要自行加入原句沒有的比喻、俚語或誇張語氣。例如「提醒你」不要翻成 "Just a heads-up"（語氣太隨性），翻成 "Just a reminder" 或 "Keep in mind that..." 更貼近原句。
+2. 句子的正式程度、語氣要盡量貼近原文：正式的中文用正式的英文，輕鬆口語的中文才用輕鬆口語的英文，不要單方面把語氣「升級」成更口語或更誇張。
+3. 避免逐字直翻造成的生硬感，但也避免過度意譯而偏離原意。
+4. 從你翻出的英文句子中，挑出 3-8 個對學習者有幫助的單字或片語（排除 a, the, is, to 這類太基礎的字)。
+5. 只能輸出一個 JSON 物件，格式為：
 {"en": "英文翻譯", "words": [{"en": "單字或片語", "zh": "繁體中文意思"}, ...]}
 不要輸出任何 JSON 以外的文字、不要用 markdown code block 包起來。`;
 
@@ -65,7 +67,7 @@ exports.handler = async (event) => {
           { role: "system", content: systemPrompt },
           { role: "user", content: zh },
         ],
-        temperature: 0.4,
+        temperature: 0.3,
         response_format: { type: "json_object" },
       }),
     });
