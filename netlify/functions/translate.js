@@ -5,7 +5,10 @@
 // 回傳格式：      { "en": "Today is a rainy day.", "words": [{ "en": "rainy", "zh": "多雨的" }, ...] }
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "openai/gpt-oss-20b"; // 注意：llama-3.3-70b-versatile 對此帳號回傳 404 model_not_found，改用免費帳號可用的模型
+// 注意：llama-3.3-70b-versatile 對此帳號回傳 404 model_not_found。
+// gpt-oss-20b 翻譯品質偏生硬，改試 gpt-oss-120b（同帳號可能可用，模型較大、語言能力較好）。
+// 如果 120b 也回傳 404，把這行改回 "openai/gpt-oss-20b" 即可。
+const MODEL = "openai/gpt-oss-120b";
 
 exports.handler = async (event) => {
   const headers = {
@@ -45,14 +48,40 @@ exports.handler = async (event) => {
   }
 
   const systemPrompt = `你是專業的中翻英老師，服務對象是台灣的上班族，用來練習日常與職場英文口說。
-規則：
-1. 翻譯要忠於原句的意思與語氣，用自然、道地的英文表達，但不要自行加入原句沒有的比喻、俚語或誇張語氣。例如「提醒你」不要翻成 "Just a heads-up"（語氣太隨性），翻成 "Just a reminder" 或 "Keep in mind that..." 更貼近原句。
-2. 句子的正式程度、語氣要盡量貼近原文：正式的中文用正式的英文，輕鬆口語的中文才用輕鬆口語的英文，不要單方面把語氣「升級」成更口語或更誇張。
-3. 避免逐字直翻造成的生硬感，但也避免過度意譯而偏離原意。
-4. 從你翻出的英文句子中，挑出 3-8 個對學習者有幫助的單字或片語（排除 a, the, is, to 這類太基礎的字)。每個單字都要附上一句簡短的「英文」解釋（像字典的英英解釋，10 個字內，簡單好懂，不要用比這個單字本身更難的字）。
-5. 只能輸出一個 JSON 物件，格式為：
-{"en": "英文翻譯", "words": [{"en": "單字或片語", "zh": "繁體中文意思", "def": "簡短英文解釋"}, ...]}
-不要輸出任何 JSON 以外的文字、不要用 markdown code block 包起來。`;
+把使用者的中文句子翻成一個母語者會「自然說出口」的英文句子——不是逐字直翻，也不要刻意加油添醋、改變原本的語氣或正式程度。可以重組語序、合併子句，只要聽起來自然就好。
+同時從英文句子裡挑 3-8 個對學習者有幫助的單字或片語（排除 a, the, is, to 這類太基礎的字），每個附上一句簡短英文解釋（像字典的英英解釋，10 個字內）。
+只能輸出一個 JSON 物件：{"en": "英文翻譯", "words": [{"en": "單字或片語", "zh": "繁體中文意思", "def": "簡短英文解釋"}, ...]}，不要輸出 JSON 以外的文字，不要用 markdown code block 包起來。`;
+
+  const fewShot = [
+    {
+      role: "user",
+      content: "今天淘汰舊咖啡杯，換了一個新的，喝起咖啡，心情變很好",
+    },
+    {
+      role: "assistant",
+      content: JSON.stringify({
+        en: "I replaced my old coffee cup with a new one today, and drinking coffee just puts me in a better mood.",
+        words: [
+          { en: "replaced", zh: "更換", def: "put a new thing in place of an old one" },
+          { en: "puts me in a mood", zh: "讓我心情變成…", def: "makes someone feel a certain way" },
+        ],
+      }),
+    },
+    {
+      role: "user",
+      content: "提醒你，股票不要隨便亂下單",
+    },
+    {
+      role: "assistant",
+      content: JSON.stringify({
+        en: "Just a reminder — don't place stock trades carelessly.",
+        words: [
+          { en: "reminder", zh: "提醒", def: "something that helps you remember" },
+          { en: "carelessly", zh: "隨便地", def: "without careful thought" },
+        ],
+      }),
+    },
+  ];
 
   try {
     const resp = await fetch(GROQ_URL, {
@@ -65,9 +94,10 @@ exports.handler = async (event) => {
         model: MODEL,
         messages: [
           { role: "system", content: systemPrompt },
+          ...fewShot,
           { role: "user", content: zh },
         ],
-        temperature: 0.3,
+        temperature: 0.4,
         response_format: { type: "json_object" },
       }),
     });
